@@ -89,6 +89,16 @@ func (this *AlienController) HandleRoutes(writer http.ResponseWriter, request *h
 	reg := regexp.MustCompile(`^/api/alien/preview/([^/]+)/([^/]+)$`)
 	strs := reg.FindStringSubmatch(path)
 	if len(strs) == 3 {
+		if (request.method == 'PUT') {
+			currentTime := request.FormValue("currentTime")
+	        
+
+			var f = func(writer http.ResponseWriter, request *http.Request) {
+				this.saveContent(writer, request, strs[1], strs[2])
+			}
+			return f, true
+		}
+
 		var f = func(writer http.ResponseWriter, request *http.Request) {
 			this.Preview(writer, request, strs[1], strs[2])
 		}
@@ -342,6 +352,12 @@ func (this *AlienController) FetchDownloadToken(writer http.ResponseWriter, requ
 func (this *AlienController) Preview(writer http.ResponseWriter, request *http.Request, uuid string, filename string) {
 
 	this.alienService.PreviewOrDownload(writer, request, uuid, filename, false)
+}
+
+//save a file.
+func (this *AlienController) saveContent(writer http.ResponseWriter, request *http.Request, uuid string, filename string) {
+
+	this.alienService.saveContent(writer, request, uuid, filename, false)
 }
 
 //download a file.

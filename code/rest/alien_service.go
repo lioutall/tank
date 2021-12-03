@@ -6,6 +6,7 @@ import (
 	"github.com/eyebluecn/tank/code/tool/result"
 	"net/http"
 	"time"
+	"strings"
 )
 
 //@Service
@@ -148,4 +149,69 @@ func (this *AlienService) PreviewOrDownload(
 		this.matterDao.TimesIncrement(uuid)
 	})
 
+}
+
+
+func (this *AlienService) saveContent(
+	writer http.ResponseWriter,
+	request *http.Request,
+	uuid string,
+	filename string,
+	withContentDisposition bool) {
+
+	matter := this.matterDao.CheckByUuid(uuid)
+
+	if matter.Name != filename {
+		panic(result.BadRequest("filename in url incorrect"))
+	}
+
+	//file need auth.
+	//1.use downloadToken to auth.
+	downloadTokenUuid := request.FormValue("downloadTokenUuid")
+	if downloadTokenUuid != "" {
+		downloadToken := this.downloadTokenDao.CheckByUuid(downloadTokenUuid)
+		if downloadToken.ExpireTime.Before(time.Now()) {
+			panic(result.BadRequest("downloadToken has expired"))
+		}
+
+		if downloadToken.MatterUuid != uuid {
+			panic(result.BadRequest("token and file info not match"))
+		}
+
+		tokenUser := this.userDao.CheckByUuid(downloadToken.UserUuid)
+		if matter.UserUuid != tokenUser.Uuid {
+			panic(result.UNAUTHORIZED)
+		}
+
+		//TODO: expire the download token. If download by chunk, do this later.
+		downloadToken.ExpireTime = time.Now()
+		this.downloadTokenDao.Save(downloadToken)
+
+	} else {
+
+		operator := this.findUser(request)
+
+		//use share code to auth.
+		shareUuid := request.FormValue("shareUuid")
+		shareCode := request.FormValue("shareCode")
+		shareRootUuid := request.FormValue("shareRootUuid")
+
+		this.shareService.ValidateMatter(request, shareUuid, shareCode, operator, shareRootUuid, matter)
+
+	}
+
+	tokenUser := this.userDao.CheckByUuid(downloadToken.UserUuid)
+    
+	content := request.FormValue("content")
+
+	// 新增一个.new文件
+	this.matterService.Upload(request, strings.NewReader(content), tokenUser, matter.AbsolutePath(), filename+".new", uploadToken.Privacy)
+
+	// 删除原有文件
+	//this.matterService.AtomicDelete(request, matter, tokenUser)
+
+	// 重命名
+	this.matterService.AtomicRename(request, matter, filename+".new", true, tokenUser)
+
+	
 }
