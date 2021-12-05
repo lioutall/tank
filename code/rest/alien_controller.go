@@ -1,14 +1,19 @@
 package rest
 
 import (
-	"github.com/eyebluecn/tank/code/core"
-	"github.com/eyebluecn/tank/code/tool/result"
-	"github.com/eyebluecn/tank/code/tool/util"
+	"fmt"
 	"net/http"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/eyebluecn/tank/code/core"
+	"github.com/eyebluecn/tank/code/tool/result"
+	"github.com/eyebluecn/tank/code/tool/util"
+	jsoniter "github.com/json-iterator/go"
 )
+
+var fileMap map[string]uint64 = make(map[string]uint64)
 
 type AlienController struct {
 	BaseController
@@ -89,12 +94,33 @@ func (this *AlienController) HandleRoutes(writer http.ResponseWriter, request *h
 	reg := regexp.MustCompile(`^/api/alien/preview/([^/]+)/([^/]+)$`)
 	strs := reg.FindStringSubmatch(path)
 	if len(strs) == 3 {
-		if (request.method == 'PUT') {
-			currentTime := request.FormValue("currentTime")
-	        
+		if request.Method == "PUT" {
+			currentTime := request.FormValue("t")
+			filename := strs[2]
+			var lastTime uint64 = fileMap[filename]
+			currentTimeNum, _ := strconv.ParseUint(currentTime, 0, 64)
+
+			if currentTimeNum < lastTime {
+				return func(writer http.ResponseWriter, request *http.Request) {
+					writer.Header().Set("Content-Type", "application/json;charset=UTF-8")
+					b, err := jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(&result.WebResult{Code: result.SHARE_CODE_ERROR.Code, Msg: "该窗口已经过期"})
+					this.PanicError(err)
+					writer.WriteHeader(result.FetchHttpStatus("200"))
+					_, err = fmt.Fprintf(writer, string(b))
+					this.PanicError(err)
+				}, true
+			}
+			fileMap[filename] = currentTimeNum
 
 			var f = func(writer http.ResponseWriter, request *http.Request) {
-				this.saveContent(writer, request, strs[1], strs[2])
+				this.saveContent(writer, request, strs[1], filename)
+
+				writer.Header().Set("Content-Type", "application/json;charset=UTF-8")
+				b, err := jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(&result.WebResult{Code: result.OK.Code, Msg: "处理完成"})
+				this.PanicError(err)
+				writer.WriteHeader(result.FetchHttpStatus("200"))
+				_, err = fmt.Fprintf(writer, string(b))
+				this.PanicError(err)
 			}
 			return f, true
 		}

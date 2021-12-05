@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"github.com/eyebluecn/tank/code/tool/result"
 	"go/build"
 	"io"
 	"io/ioutil"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/eyebluecn/tank/code/tool/result"
 )
 
 func PathExists(path string) bool {
@@ -56,6 +57,10 @@ func GetHomePath() string {
 		panic(err)
 	}
 	exPath := filepath.Dir(ex)
+
+	if strings.HasPrefix(ex, "/tmp") {
+		exPath = GetDevHomePath() + "/tmp"
+	}
 
 	if EnvMacDevelopment() {
 		exPath = GetDevHomePath() + "/tmp"
