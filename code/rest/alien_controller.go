@@ -116,7 +116,7 @@ func (this *AlienController) HandleRoutes(writer http.ResponseWriter, request *h
 				this.saveContent(writer, request, strs[1], filename)
 
 				writer.Header().Set("Content-Type", "application/json;charset=UTF-8")
-				b, err := jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(&result.WebResult{Code: result.OK.Code, Msg: "处理完成"})
+				b, err := jsoniter.ConfigCompatibleWithStandardLibrary.Marshal(&result.WebResult{Code: result.OK.Code, Msg: "已保存"})
 				this.PanicError(err)
 				writer.WriteHeader(result.FetchHttpStatus("200"))
 				_, err = fmt.Fprintf(writer, string(b))
