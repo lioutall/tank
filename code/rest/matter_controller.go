@@ -1,13 +1,14 @@
 package rest
 
 import (
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/eyebluecn/tank/code/core"
 	"github.com/eyebluecn/tank/code/tool/builder"
 	"github.com/eyebluecn/tank/code/tool/i18n"
 	"github.com/eyebluecn/tank/code/tool/result"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 type MatterController struct {
@@ -226,6 +227,12 @@ func (this *MatterController) CreateDirectory(writer http.ResponseWriter, reques
 	user := this.checkUser(request)
 
 	var dirMatter = this.matterDao.CheckWithRootByUuid(puuid, user)
+
+	if strings.HasSuffix(name, ".md") {
+		this.matterService.createFile(request, strings.NewReader(""), user, dirMatter, name, true)
+		matter := this.matterService.createNonDirMatter(dirMatter, name, 0, true, user)
+		return this.Success(matter)
+	}
 
 	matter := this.matterService.AtomicCreateDirectory(request, dirMatter, name, user)
 	return this.Success(matter)

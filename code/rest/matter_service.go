@@ -496,6 +496,45 @@ func (this *MatterService) UploadFile(request *http.Request, file io.Reader, use
 	return fileSize
 }
 
+//upload files.
+func (this *MatterService) createFile(request *http.Request, file io.Reader, user *User, dirMatter *Matter, filename string, privacy bool) int64 {
+
+	if user == nil {
+		panic(result.BadRequest("user cannot be nil."))
+	}
+
+	if dirMatter == nil {
+		panic(result.BadRequest("dirMatter cannot be nil."))
+	}
+
+	if dirMatter.Deleted {
+		panic(result.BadRequest("Dir has been deleted. Cannot upload under it."))
+	}
+
+	if len(filename) > MATTER_NAME_MAX_LENGTH {
+		panic(result.BadRequestI18n(request, i18n.MatterNameLengthExceedLimit, len(filename), MATTER_NAME_MAX_LENGTH))
+	}
+
+	dirAbsolutePath := dirMatter.AbsolutePath()
+
+	fileAbsolutePath := dirAbsolutePath + "/" + filename
+
+	destFile, err := os.OpenFile(fileAbsolutePath, os.O_WRONLY|os.O_CREATE, 0777)
+	this.PanicError(err)
+
+	defer func() {
+		err := destFile.Close()
+		this.PanicError(err)
+	}()
+
+	fileSize, err := io.Copy(destFile, file)
+	this.PanicError(err)
+
+	this.logger.Info("create file %s", filename)
+
+	return fileSize
+}
+
 // create a non dir matter.
 func (this *MatterService) createNonDirMatter(dirMatter *Matter, filename string, fileSize int64, privacy bool, user *User) *Matter {
 	dirRelativePath := dirMatter.Path
